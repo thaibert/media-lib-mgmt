@@ -4,16 +4,23 @@ import java.sql.SQLException;
 import java.util.*;
 
 class Main {
-  public static void main(String[] args) throws Exception {
-    // ... TODO: arg parsing etc.
-    String rootDir = "";
-    Collection<String> wantedFileTypes = Arrays.asList("");
+  // Args passed in as e.g. -Ddir=<dir>
+  static final String ROOT_DIR = "dir";
+  static final String FILE_TYPES = "filetypes";
+  static final String JDBC_CONNECTION = "jdbc";
+  static final String TABLE_NAME = "table";
 
-    String url = "";
-    String table = "";
+  public static void main(String[] args) {
+    validateArgs();
+
+    String rootDir = System.getProperty(ROOT_DIR);
+    Collection<String> wantedFileTypes = Arrays.asList(System.getProperty(FILE_TYPES).split(","));
+
+    String jdbcUrl = System.getProperty(JDBC_CONNECTION);
+    String table = System.getProperty(TABLE_NAME);
 
     try {
-      DatabaseClient db = new DatabaseClient(url, table);
+      DatabaseClient db = new DatabaseClient(jdbcUrl, table);
 
       Collection<Inode> inodes = FileUtil.filesIn(rootDir, wantedFileTypes);
 
@@ -22,5 +29,25 @@ class Main {
       e.printStackTrace();
       System.exit(1);
     }
+  }
+
+  private static void validateArgs() {
+    final List<String> requiredArgs = Arrays.asList(
+      ROOT_DIR,
+      FILE_TYPES,
+      JDBC_CONNECTION,
+      TABLE_NAME
+    );
+
+    requiredArgs.forEach(arg -> {
+      if (System.getProperty(arg) == null) {
+        System.err.println("Argument -D" + arg + "=<...> is not set");
+
+        System.err.println("Required args:");
+        requiredArgs.forEach(x -> System.err.println("\t-D" + x));
+
+        System.exit(1);
+      }
+    });
   }
 }
