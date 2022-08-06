@@ -1,12 +1,16 @@
 package com.thaibert;
 
 import java.sql.SQLException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 class Main {
   // Args passed in as e.g. -Ddir=<dir>
   static final String ACTION = "action";
-  static final String DIR = "dir";
+  static final String SOURCE_DIR = "sourcedir";
+  static final String TARGET_DIR = "targetdir";
   static final String FILE_TYPES = "filetypes";
   static final String JDBC_CONNECTION = "jdbc";
   static final String TABLE_NAME = "table";
@@ -16,7 +20,8 @@ class Main {
     validateArgs();
 
     String action = System.getProperty(ACTION);
-    String dir = System.getProperty(DIR);
+    String sourceDir = System.getProperty(SOURCE_DIR);
+    String targetDir = System.getProperty(TARGET_DIR);
 
     Collection<String> wantedFileTypes = Arrays.asList(
       System.getProperty(FILE_TYPES, ",").split(",")
@@ -29,9 +34,23 @@ class Main {
       DatabaseClient db = new DatabaseClient(jdbcUrl, table);
 
       switch (action) {
-        case "watch": {
-          Collection<Inode> inodes = FileUtil.filesIn(dir, wantedFileTypes);
+        case "read": {
+          System.out.println("Reading file system...");
+          Collection<Inode> inodes = FileUtil.filesIn(sourceDir, wantedFileTypes);
+          System.out.println("Found " + inodes.size() + " files.");
+
           inodes.forEach(x -> db.insert(x.inode(), x.relativizedPath()));
+          break;
+        }
+        case "link": {
+          System.out.println("Linking...");
+          Map<String, String> filesToLink = db.getFilesToLink();
+          System.out.println("Linking " + filesToLink.size() + " files.");
+
+          filesToLink.forEach((source, target) -> FileUtil.link(
+            sourceDir + "/" + source, 
+            targetDir + "/" + target
+          ));
           break;
         }
         default: {
@@ -47,12 +66,13 @@ class Main {
   private static void validateArgs() {
     final List<String> requiredArgs = Arrays.asList(
       ACTION,
-      DIR,
+      SOURCE_DIR,
       JDBC_CONNECTION,
       TABLE_NAME
     );
     final List<String> optionalArgs = Arrays.asList(
-      FILE_TYPES
+      FILE_TYPES,
+      TARGET_DIR
     );
 
     requiredArgs.forEach(arg -> {
@@ -67,5 +87,13 @@ class Main {
         System.exit(1);
       }
     });
+
+    if ("link".equals(System.getProperty(ACTION))) {
+      String targetDir = System.getProperty(TARGET_DIR);
+      if (targetDir == null || targetDir == "") {
+        System.err.println("Action \"link\" needs a target dir (-Dtargetdir=<...>).");
+        System.exit(1);
+      }
+    }
   }
 }

@@ -1,6 +1,7 @@
 package com.thaibert;
 
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -22,7 +23,7 @@ public class FileUtil {
 
     final Predicate<Path> isDirectory = (Path x) -> x.toFile().isDirectory();
     final Predicate<Path> isFile = isDirectory.negate();
-    final Predicate<Path> isDesiredFileType = desiredFileTypes.size() == 0 
+    final Predicate<Path> isDesiredFileType = desiredFileTypes.isEmpty()
       ? (Path x) -> true 
       : (Path x) -> {
         String fileName = x.getFileName().toString();
@@ -53,11 +54,26 @@ public class FileUtil {
             }
           })
           .filter(x -> x != null)
-          .peek(System.out::println)
           .collect(Collectors.toList());
     } catch (IOException e) {
       e.printStackTrace();
       return new ArrayList<>();
+    }
+  }
+
+  public static void link(String source, String target) {
+    try {
+      Path link = Paths.get(target).normalize();
+      Path existing = Paths.get(source).normalize();
+
+      Files.createDirectories(link.getParent());
+      Files.createLink(link, existing);
+
+      System.out.println("[LINKED] " + source + " -> " + target);
+    } catch (FileAlreadyExistsException E) {
+      /* no-op */
+    } catch (IOException e) {
+      e.printStackTrace();
     }
   }
 }

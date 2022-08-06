@@ -2,15 +2,17 @@ package com.thaibert;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 public class DatabaseClient {
 
   private String table;
   private Connection db;
-
-  private static final String NULL_VALUE = "null";
 
   public DatabaseClient(String jdbcConnectionUrl, String table) throws SQLException {
     this.table = table;
@@ -26,11 +28,30 @@ public class DatabaseClient {
           "INSERT INTO " + table + " VALUES (" +
             quotes(inode) + ", " +
             quotes(relativizedPath) + ", " +
-            NULL_VALUE +
+            "NULL" +
           ")" +
           " ON CONFLICT DO NOTHING;");
     } catch (SQLException e) {
       e.printStackTrace();
+    }
+  }
+
+  public Map<String, String> getFilesToLink() {
+    try (Statement st = db.createStatement()) {
+      ResultSet rs = st.executeQuery(
+        "SELECT * FROM " + table + " WHERE clean_name IS NOT NULL"
+      );
+
+      Map<String, String> links = new HashMap<>();
+      while (rs.next()) {
+        String dirty = rs.getString("raw_name");
+        String clean = rs.getString("clean_name");
+        links.put(dirty, clean);
+      }
+      return links;
+    } catch(SQLException e) {
+      e.printStackTrace();
+      return Collections.emptyMap();
     }
   }
 
