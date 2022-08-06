@@ -22,11 +22,13 @@ public class FileUtil {
 
     final Predicate<Path> isDirectory = (Path x) -> x.toFile().isDirectory();
     final Predicate<Path> isFile = isDirectory.negate();
-    final Predicate<Path> isDesiredFileType = (Path x) -> {
-      String fileName = x.getFileName().toString();
-      String fileEnding = fileName.substring(fileName.lastIndexOf(".") + 1);
-      return desiredFileTypes.contains(fileEnding);
-    };
+    final Predicate<Path> isDesiredFileType = desiredFileTypes.size() == 0 
+      ? (Path x) -> true 
+      : (Path x) -> {
+        String fileName = x.getFileName().toString();
+        String fileEnding = fileName.substring(fileName.lastIndexOf(".") + 1);
+        return desiredFileTypes.contains(fileEnding);
+      };
 
     try (Stream<Path> files = Files.walk(root)) {
       return files.filter(isFile)

@@ -5,16 +5,22 @@ import java.util.*;
 
 class Main {
   // Args passed in as e.g. -Ddir=<dir>
-  static final String ROOT_DIR = "dir";
+  static final String ACTION = "action";
+  static final String DIR = "dir";
   static final String FILE_TYPES = "filetypes";
   static final String JDBC_CONNECTION = "jdbc";
   static final String TABLE_NAME = "table";
 
+
   public static void main(String[] args) {
     validateArgs();
 
-    String rootDir = System.getProperty(ROOT_DIR);
-    Collection<String> wantedFileTypes = Arrays.asList(System.getProperty(FILE_TYPES).split(","));
+    String action = System.getProperty(ACTION);
+    String dir = System.getProperty(DIR);
+
+    Collection<String> wantedFileTypes = Arrays.asList(
+      System.getProperty(FILE_TYPES, ",").split(",")
+    );
 
     String jdbcUrl = System.getProperty(JDBC_CONNECTION);
     String table = System.getProperty(TABLE_NAME);
@@ -22,9 +28,16 @@ class Main {
     try {
       DatabaseClient db = new DatabaseClient(jdbcUrl, table);
 
-      Collection<Inode> inodes = FileUtil.filesIn(rootDir, wantedFileTypes);
-
-      inodes.forEach(x -> db.insert(x.inode(), x.relativizedPath()));
+      switch (action) {
+        case "watch": {
+          Collection<Inode> inodes = FileUtil.filesIn(dir, wantedFileTypes);
+          inodes.forEach(x -> db.insert(x.inode(), x.relativizedPath()));
+          break;
+        }
+        default: {
+          throw new IllegalArgumentException("Unknown action \"" + action + "\"");
+        }
+      }
     } catch (SQLException e) {
       e.printStackTrace();
       System.exit(1);
@@ -33,10 +46,13 @@ class Main {
 
   private static void validateArgs() {
     final List<String> requiredArgs = Arrays.asList(
-      ROOT_DIR,
-      FILE_TYPES,
+      ACTION,
+      DIR,
       JDBC_CONNECTION,
       TABLE_NAME
+    );
+    final List<String> optionalArgs = Arrays.asList(
+      FILE_TYPES
     );
 
     requiredArgs.forEach(arg -> {
@@ -44,7 +60,9 @@ class Main {
         System.err.println("Argument -D" + arg + "=<...> is not set");
 
         System.err.println("Required args:");
-        requiredArgs.forEach(x -> System.err.println("\t-D" + x));
+        requiredArgs.forEach(x -> System.err.println("\t-D" + x + "=<...>"));
+        System.err.println("Optional args:");
+        optionalArgs.forEach(x -> System.err.println("\t-D" + x + "=<...>"));
 
         System.exit(1);
       }
