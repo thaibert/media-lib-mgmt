@@ -6,9 +6,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -36,6 +36,7 @@ public class FileUtil {
           .filter(isDesiredFileType)
           .map(x -> {
             try {
+              // File keys are of the form: (dev=..., ino=...)
               String fileKey = Files.readAttributes(x, BasicFileAttributes.class)
                   .fileKey()
                   .toString();
@@ -57,21 +58,22 @@ public class FileUtil {
           .collect(Collectors.toList());
     } catch (IOException e) {
       e.printStackTrace();
-      return new ArrayList<>();
+      return Collections.emptyList();
     }
   }
 
-  public static void link(String source, String target) {
+  public static void link(String sourceFullyQualified, String targetFullyQualified) {
     try {
-      Path link = Paths.get(target).normalize();
-      Path existing = Paths.get(source).normalize();
+      Path link = Paths.get(targetFullyQualified).normalize();
+      Path existing = Paths.get(sourceFullyQualified).normalize();
 
       Files.createDirectories(link.getParent());
       Files.createLink(link, existing);
 
-      System.out.println("[LINKED] " + source + " -> " + target);
-    } catch (FileAlreadyExistsException E) {
-      /* no-op */
+      System.out.println("[LINKED] " + existing.toString() + "\t->\t" + link.toString());
+    } catch (FileAlreadyExistsException e) {
+      /* no-op at the moment. TODO: check if inode matches, otherwise overwrite with link to source. */
+      System.out.println("         file already exists:\t" + targetFullyQualified);
     } catch (IOException e) {
       e.printStackTrace();
     }

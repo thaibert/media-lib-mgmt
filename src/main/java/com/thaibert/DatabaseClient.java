@@ -18,17 +18,17 @@ public class DatabaseClient {
     this.table = table;
     this.db = DriverManager.getConnection(jdbcConnectionUrl);
 
-    initTable();
+    initTableIfNonExistant();
   }
 
   public void insert(String inode, String relativizedPath) {
-    System.out.println("[INSERT] " + inode + ", " + relativizedPath);
+    System.out.println("[INSERT] " + inode + ",\t" + relativizedPath);
     try (Statement st = db.createStatement()) {
       st.executeUpdate(
           "INSERT INTO " + table + " VALUES (" +
             quotes(inode) + ", " +
             quotes(relativizedPath) + ", " +
-            "NULL" +
+            "NULL" + // <-- money line; put in NULL as its target, since this needs to be filled out later.
           ")" +
           " ON CONFLICT DO NOTHING;");
     } catch (SQLException e) {
@@ -55,7 +55,7 @@ public class DatabaseClient {
     }
   }
 
-  private void initTable() throws SQLException {
+  private void initTableIfNonExistant() throws SQLException {
     try (Statement st = db.createStatement()) {
       st.executeUpdate(
           "CREATE TABLE IF NOT EXISTS " + this.table + "(" +
